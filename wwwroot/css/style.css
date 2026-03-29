@@ -1,0 +1,104 @@
+/* 余計な装飾を排除し、ラベルと入力をハッキリさせました */
+body {
+    margin: 0;
+    padding: 20px;
+    background-color: #fff; /* ブラウザ確認用に一旦白、OBSではここを透過設定に */
+    color: #333;
+    font-family: sans-serif;
+}
+
+/* セットアップ画面 */
+.setup-container {
+    max-width: 500px;
+    margin: 50px auto;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+}
+
+.setup-container h2 {
+    margin-top: 0;
+    border-bottom: 2px solid #333;
+    padding-bottom: 10px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.text-input,
+.num-input,
+.unit-select {
+    padding: 8px;
+    font-size: 16px;
+    border: 1px solid #999;
+    border-radius: 4px;
+}
+
+.text-input {
+    width: 100%;
+    box-sizing: border-box;
+}
+.input-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.start-btn {
+    margin-top: 10px;
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #444;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* メイン画面 */
+.status-banner {
+    background: #eee;
+    padding: 10px;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+#MAP_JAPAN {
+    width: 100%;
+    height: auto;
+    border: 1px solid #999;
+}
+
+.prefecture-path {
+    fill: #eee; /* デフォルトは薄いグレー */
+    stroke: #333;
+    stroke-width: 0.5;
+}
+
+/* エリア別カラー（filledになった時のみ適用） */
+.filled.area-6eaf401fd13748e88632632f9a1e935e {
+    fill: #00f2ff !important;
+}
+.filled.area-263693bebe0d496a83119430bef2a50a {
+    fill: #ff79c6 !important;
+}
+.filled.area-7a6b7c4ebdd74c98b63ac13b11074e69 {
+    fill: #50fa7b !important;
+}
+.filled.area-de76a2346f3748969573ed66f2e89314 {
+    fill: #bd93f9 !important;
+}
+.filled.area-29a420669269482bb2612e378548f102 {
+    fill: #ffb86c !important;
+}
+.filled.area-1c1129cc38b940f6b59754f66a2459a6 {
+    fill: #ff5555 !important;
+}

@@ -1,0 +1,23 @@
+{
+    "compilerOptions": {
+        "noImplicitAny": false,
+        "noEmitOnError": true,
+        "removeComments": false,
+        "sourceMap": true,
+        "target": "ES2022",
+        "lib": ["ES2022", "ESNext", "DOM", "DOM.Iterable"],
+        "strict": true,
+        "outDir": "dist/",
+        "module": "ESNext",
+        "moduleResolution": "Node",
+        "esModuleInterop": true,
+        "resolveJsonModule": true,
+        "allowJs": true,
+        "declaration": true
+    },
+    "include": ["src/**/*"],
+    "ts-node": {
+        "esm": true,
+        "experimentalSpecifierResolution": "node"
+    }
+}
