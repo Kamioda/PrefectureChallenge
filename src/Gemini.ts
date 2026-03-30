@@ -1,5 +1,11 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { QuizData } from './types.js';
+
+export interface QuizData {
+    question: string;
+    options: string[];
+    answerIndex: number;
+    explanation: string;
+}
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 const model = genAI.getGenerativeModel({

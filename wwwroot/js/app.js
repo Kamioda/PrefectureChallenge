@@ -1,5 +1,6 @@
 /**
- * 47都道府県耐久システム - フロントエンド (デザイン復元 ＋ サーバー主導版)
+ * 47都道府県耐久配信システム v1.0
+ * Frontend: JavaScript (Mithril.js)
  */
 
 const State = {
@@ -14,25 +15,50 @@ const State = {
     isAccepting: true,
     pollingTimer: null,
 
+    // 入力用バッファ
     inputSessionId: '',
     inputInterval: 1,
     inputUnit: 'sec',
+    inputStreamerName: '', // 表示名
+    inputReadingLast: '', // よみがな（名字）
+    inputReadingFirst: '', // よみがな（名前）
+
+    // 確定情報
+    streamerName: '',
+    streamerReading: '', // 名字と名前をスペースで結合したもの
+    isOutEffect: false,
+    displayOutName: '',
+    dedeenSE: new Audio('assets/sounds/dedeen.mp3'),
+    voiceVoxUrl: 'http://localhost:11021',
 
     async init() {
         this.sessionId = this.params.get('session');
         this.oneCommeHost = this.params.get('onecomme') || '127.0.0.1';
+        this.streamerName = this.params.get('name') || '';
+        this.streamerReading = this.params.get('reading') || '';
+
         try {
+            // 地図のパスデータをロード
             this.mapData = await m.request({ method: 'GET', url: 'data/mapData.json' });
         } catch (e) {
             console.error('Map Load Error', e);
         }
-        if (this.sessionId) {
+
+        // URLパラメータに情報があれば自動復帰
+        if (this.sessionId && this.streamerName) {
             const pInterval = this.params.get('interval') || 1000;
             this.startSystem(parseInt(pInterval));
         }
     },
 
     async startSystem(directInterval = null) {
+        // 1. 表示名と読み仮名の確定（名字と名前の間にスペースを挟む）
+        if (!this.streamerName) {
+            this.streamerName = this.inputStreamerName.trim();
+            this.streamerReading = `${this.inputReadingLast.trim()} ${this.inputReadingFirst.trim()}`;
+        }
+
+        // 2. セッションIDの確定
         if (!this.sessionId) {
             if (this.inputSessionId.trim() !== '') {
                 this.sessionId = this.inputSessionId.trim();
@@ -47,8 +73,16 @@ const State = {
                 }
             }
         }
+
         let finalMs = directInterval || (this.inputUnit === 'sec' ? this.inputInterval * 1000 : this.inputInterval);
-        window.history.pushState({}, '', `?session=${this.sessionId}&interval=${finalMs}`);
+
+        // URLパラメータを更新
+        window.history.pushState(
+            {},
+            '',
+            `?session=${this.sessionId}&name=${encodeURIComponent(this.streamerName)}&reading=${encodeURIComponent(this.streamerReading)}&interval=${finalMs}`
+        );
+
         this.connectMain();
         this.startOneCommePolling(finalMs);
         this.statusMessage = 'システム稼働中';
@@ -58,6 +92,18 @@ const State = {
     connectMain() {
         const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
         this.socket = new WebSocket(`${protocol}://${window.location.host}/ws/${this.sessionId}`);
+
+        this.socket.onopen = () => {
+            // サーバーに名前とよみがな（スペース入り）を登録
+            this.socket.send(
+                JSON.stringify({
+                    type: 'CLIENT_START',
+                    name: this.streamerName,
+                    reading: this.streamerReading,
+                })
+            );
+        };
+
         this.socket.onmessage = event => {
             const data = JSON.parse(event.data);
             switch (data.type) {
@@ -65,7 +111,10 @@ const State = {
                 case 'UPDATE_MAP':
                 case 'DOBON_RESET':
                     this.regions = data.regions;
-                    if (data.type === 'DOBON_RESET') this.statusMessage = `【ドボン】${data.prefName}でリセット！`;
+                    if (data.type === 'DOBON_RESET') {
+                        this.statusMessage = `【ドボン】${data.prefName}でリセット！`;
+                        this.playOutSequence();
+                    }
                     break;
                 case 'SUCCESS':
                     this.statusMessage = `${data.prefName} 達成！`;
@@ -79,12 +128,39 @@ const State = {
         };
     },
 
-    /**
-     * 【修正】判定ロジックを全削除し、RAW_COMMENTSとしてサーバーへ丸投げ
-     */
+    async playOutSequence() {
+        this.isOutEffect = true;
+        this.displayOutName = this.streamerName;
+        m.redraw();
+        await this.dedeenSE.play();
+        try {
+            const text = `${this.streamerReading}、アウト。`;
+            const query = await m.request({
+                method: 'POST',
+                url: `${this.voiceVoxUrl}/audio_query`,
+                params: { speaker: 2, text: text },
+            });
+            const voiceRes = await fetch(`${this.voiceVoxUrl}/synthesis?speaker=2`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(query),
+            });
+            const blob = await voiceRes.blob();
+            const url = URL.createObjectURL(blob);
+            setTimeout(() => {
+                new Audio(url).play();
+            }, 1200);
+        } catch (e) {
+            console.warn('VOICEVOX offline');
+        }
+        setTimeout(() => {
+            this.isOutEffect = false;
+            m.redraw();
+        }, 5000);
+    },
+
     startOneCommePolling(interval) {
         if (this.pollingTimer) clearInterval(this.pollingTimer);
-
         const fetchComments = async () => {
             if (!this.isAccepting || !this.socket || this.socket.readyState !== 1) return;
             try {
@@ -93,9 +169,7 @@ const State = {
                     url: `http://${this.oneCommeHost}:11180/api/comments`,
                     params: { limit: 100 },
                 });
-
                 if (res && res.length > 0) {
-                    // サーバー側で重複排除と都道府県判定をさせる
                     this.socket.send(
                         JSON.stringify({
                             type: 'RAW_COMMENTS',
@@ -103,11 +177,8 @@ const State = {
                         })
                     );
                 }
-            } catch (e) {
-                console.warn('OneComme API Offline');
-            }
+            } catch (e) {}
         };
-
         this.pollingTimer = setInterval(fetchComments, interval);
     },
 
@@ -148,7 +219,6 @@ const MapView = {
                         })
                     );
                 }),
-                // 沖縄回避用境界線
                 m('path#ARC', {
                     d: 'M420 0 L420 530 L0 530',
                     fill: 'none',
@@ -165,13 +235,33 @@ const SetupView = {
         m(
             '.setup-container',
             m('.setup-card', [
-                m('h2', '耐久配信システム設定'),
+                m('h2', '47都道府県耐久設定'),
                 m('.form-group', [
-                    m('label', 'セッションID (継続時)'),
+                    m('label', 'セッションID (継続時は入力)'),
                     m('input.text-input[type=text]', {
                         value: State.inputSessionId,
                         oninput: e => (State.inputSessionId = e.target.value),
                     }),
+                ]),
+                m('.form-group', [
+                    m('label', '配信者名 (表示用)'),
+                    m('input.text-input[type=text]', {
+                        placeholder: '例: 桜羽ありす',
+                        oninput: e => (State.inputStreamerName = e.target.value),
+                    }),
+                ]),
+                m('.form-group', [
+                    m('label', 'よみがな (名字 / 名前)'),
+                    m('.input-row', [
+                        m('input.text-input[type=text]', {
+                            placeholder: 'さくらは',
+                            oninput: e => (State.inputReadingLast = e.target.value),
+                        }),
+                        m('input.text-input[type=text]', {
+                            placeholder: 'ありす',
+                            oninput: e => (State.inputReadingFirst = e.target.value),
+                        }),
+                    ]),
                 ]),
                 m('.form-group', [
                     m('label', '取得間隔'),
@@ -186,7 +276,14 @@ const SetupView = {
                         ]),
                     ]),
                 ]),
-                m('button.start-btn', { onclick: () => State.startSystem() }, '開始'),
+                m(
+                    'button.start-btn',
+                    {
+                        disabled: !State.inputStreamerName || !State.inputReadingLast || !State.inputReadingFirst,
+                        onclick: () => State.startSystem(),
+                    },
+                    'チャレンジ開始'
+                ),
             ])
         ),
 };
@@ -227,38 +324,34 @@ const MainView = {
             State.currentQuiz
                 ? m(
                       '.quiz-overlay',
-                      {
-                          style: 'position:fixed; inset:0; background:rgba(0,0,0,0.8); display:flex; align-items:center; justify-content:center; z-index:2000;',
-                      },
-                      m(
-                          '.quiz-card',
-                          {
-                              style: 'background:#282a36; padding:30px; border-radius:15px; border:3px solid #ff79c6; text-align:center; width:400px;',
-                          },
-                          [
-                              m('h3', { style: 'color:#ff79c6; margin-top:0;' }, 'AI救済クイズ！'),
-                              m('p', State.currentQuiz.question),
-                              m(
-                                  '.opts',
-                                  State.currentQuiz.options.map((o, i) =>
-                                      m(
-                                          'button',
-                                          {
-                                              style: 'display:block; width:100%; margin-bottom:12px; padding:12px; background:#44475a; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;',
-                                              onclick: () => {
-                                                  if (i === State.currentQuiz.answerIndex)
-                                                      State.statusMessage = '回避成功！';
-                                                  State.currentQuiz = null;
-                                                  m.redraw();
-                                              },
+                      m('.quiz-card', [
+                          m('h3', { style: 'color:#ff79c6; margin-top:0;' }, 'AI救済クイズ！'),
+                          m('p', State.currentQuiz.question),
+                          m(
+                              '.opts',
+                              State.currentQuiz.options.map((o, i) =>
+                                  m(
+                                      'button',
+                                      {
+                                          style: 'display:block; width:100%; margin-bottom:12px; padding:12px; background:#44475a; color:white; border:none; border-radius:8px; cursor:pointer;',
+                                          onclick: () => {
+                                              if (i === State.currentQuiz.answerIndex)
+                                                  State.statusMessage = '回避成功！';
+                                              State.currentQuiz = null;
+                                              m.redraw();
                                           },
-                                          o
-                                      )
+                                      },
+                                      o
                                   )
-                              ),
-                          ]
-                      )
+                              )
+                          ),
+                      ])
                   )
+                : null,
+            State.isOutEffect
+                ? m('.out-overlay', [
+                      m('.out-box', [m('h1.out-name', State.displayOutName), m('h1.out-text', 'OUT !!')]),
+                  ])
                 : null,
         ]),
 };

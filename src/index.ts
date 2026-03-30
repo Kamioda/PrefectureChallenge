@@ -8,9 +8,9 @@ const { app } = expressWs(express());
 const port = process.env.PORT || 3000;
 
 const DEBUG_MODE = process.argv.includes('--debug');
-// パスを確認してください（./data/areas.json）
 const AREAS_DATA = JSON.parse(fs.readFileSync('./data/areas.json', 'utf8'));
 
+// GC（ガベージコレクション）
 setInterval(() => {
     const now = Date.now();
     const oneHour = 60 * 60 * 1000;
@@ -33,62 +33,56 @@ app.get('/api/session/new', (req, res) => {
 
 app.ws('/ws/:sessionId', (ws, req) => {
     const sessionId = req.params.sessionId as string;
-    // セッション取得（なければ作成、データ注入）
     const session = sessionManager.initSession(sessionId, AREAS_DATA);
 
     session.clients.add(ws as any);
     session.lastEmptyTimestamp = null;
 
-    // --- 【重要】接続の瞬間に現在の地図状態をクライアントに送る ---
-    ws.send(
-        JSON.stringify({
-            type: 'INIT',
-            regions: session.regions,
-        })
-    );
-
     ws.on('message', async (msg: string) => {
         try {
             const data = JSON.parse(msg);
 
-            // デバッグログ
-            if (DEBUG_MODE && data.type === 'RAW_COMMENTS') {
-                console.log(`[WS Inbound] Received ${data.comments?.length} comments`);
-            }
-
             switch (data.type) {
-                case 'RAW_COMMENTS': {
-                    const { comments } = data;
-                    if (!comments) break;
+                case 'CLIENT_START':
+                    // 名前と「スペース入りよみがな」を保存
+                    session.streamerName = data.name;
+                    session.streamerReading = data.reading;
 
-                    comments.forEach((c: any) => {
-                        const cId = c.id;
-                        const text = c.comment;
-                        const uId = c.userId;
+                    ws.send(
+                        JSON.stringify({
+                            type: 'INIT',
+                            regions: session.regions,
+                        })
+                    );
+                    break;
 
-                        if (session.processedCommentIds.has(cId)) return;
-                        session.processedCommentIds.add(cId);
+                case 'RAW_COMMENTS':
+                    if (!session.streamerName) break;
+                    data.comments.forEach((c: any) => {
+                        if (session.processedCommentIds.has(c.id)) return;
+                        session.processedCommentIds.add(c.id);
 
-                        AREAS_DATA.regions.forEach((r: any) => {
-                            r.prefs.forEach((pref: string) => {
+                        for (const region of session.regions) {
+                            if (region.isCleared) continue;
+                            for (const pref of region.prefs) {
                                 const short = pref.replace(/[都道府県]$/, '');
-                                if (text.includes(short)) {
-                                    handleLogic(session, sessionId, uId, pref);
+                                if (c.comment.includes(short)) {
+                                    handleLogic(session, sessionId, c.userId, pref);
+                                    return;
                                 }
-                            });
-                        });
+                            }
+                        }
                     });
                     break;
-                }
-                case 'SELECT_PREF': {
+
+                case 'SELECT_PREF':
                     handleLogic(session, sessionId, data.userId, data.prefName);
                     break;
-                }
-                case 'REQUEST_QUIZ': {
+
+                case 'REQUEST_QUIZ':
                     const quiz = await generateQuiz(data.prefName);
                     sessionManager.broadcast(sessionId, { type: 'QUIZ_DATA', quiz });
                     break;
-                }
             }
         } catch (e) {
             console.error('Message Error:', e);
@@ -102,29 +96,24 @@ app.ws('/ws/:sessionId', (ws, req) => {
 });
 
 function handleLogic(session: any, sId: string, uId: string, pref: string) {
-    // ここで session.regions が空だと find が失敗して return されます
     const region = session.regions.find((r: any) => r.prefs.includes(pref));
-
-    if (!region) {
-        if (DEBUG_MODE) console.log(`[Skip] ${pref} is not in remaining prefs.`);
-        return;
-    }
-    if (region.isCleared) return;
+    if (!region || region.isCleared) return;
 
     if (!DEBUG_MODE && session.globalParticipantIds.includes(uId)) return;
 
-    // 【注意】スペルが 'dovon' になっています。areas.json側も 'dovon' ですか？
     if (pref === region.dovon) {
-        console.log(`DOBON! ${pref}`);
+        console.log(`[DOBON] ${session.streamerName} hit ${pref}!`);
         sessionManager.resetRegion(sId, region.id);
         sessionManager.broadcast(sId, {
             type: 'DOBON_RESET',
             prefName: pref,
             regions: session.regions,
+            streamerName: session.streamerName,
         });
     } else {
         region.prefs = region.prefs.filter((p: string) => p !== pref);
         session.globalParticipantIds.push(uId);
+        session.comboCount++;
 
         if (region.prefs.length === 1 && region.prefs[0] === region.dovon) {
             region.isCleared = true;
@@ -140,4 +129,4 @@ function handleLogic(session: any, sId: string, uId: string, pref: string) {
 }
 
 app.use(express.static('./wwwroot'));
-app.listen(port, () => console.log(`Server started. Mode: ${DEBUG_MODE ? 'DEBUG' : 'PROD'}`));
+app.listen(port, () => console.log(`Server started on port ${port}`));

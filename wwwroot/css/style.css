@@ -1,104 +1,188 @@
-/* 余計な装飾を排除し、ラベルと入力をハッキリさせました */
+/* style.css */
 body {
+    background: transparent; /* OBS透過用 */
+    color: white;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     margin: 0;
-    padding: 20px;
-    background-color: #fff; /* ブラウザ確認用に一旦白、OBSではここを透過設定に */
-    color: #333;
-    font-family: sans-serif;
+    overflow: hidden; /* OBSブラウザソース用 */
 }
 
-/* セットアップ画面 */
+/* --- 提供コードベースの地図スタイル --- */
+svg#MAP_JAPAN {
+    width: 100%;
+    height: 100vh;
+}
+
+.prefecture-path {
+    transition: fill 0.3s ease; /* 色変化を滑らかに */
+}
+
+/* クリア（色塗り）済み */
+.prefecture-path.filled {
+    fill: #ff79c6; /* ドラークラ風ピンク */
+}
+
+/* 地方クリア時のエフェクト（必要なら） */
+.region-cleared {
+    filter: brightness(1.2) drop-shadow(0 0 5px #ff79c6);
+}
+
+/* ARC（境界線） */
+path#ARC {
+    stroke-dasharray: 10, 5;
+}
+
+/* --- 提供コードベースのUIスタイル --- */
 .setup-container {
-    max-width: 500px;
-    margin: 50px auto;
-    padding: 20px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    background-color: #f9f9f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.8);
 }
-
-.setup-container h2 {
+.setup-card {
+    background: #282a36;
+    padding: 30px;
+    border-radius: 15px;
+    border: 3px solid #ff79c6;
+    text-align: center;
+    width: 400px;
+}
+.setup-card h2 {
+    color: #ff79c6;
     margin-top: 0;
-    border-bottom: 2px solid #333;
-    padding-bottom: 10px;
 }
-
 .form-group {
-    margin-bottom: 15px;
+    margin-bottom: 20px;
+    text-align: left;
 }
-
 .form-group label {
     display: block;
-    font-weight: bold;
+    color: #aaa;
+    font-size: 12px;
     margin-bottom: 5px;
 }
-
 .text-input,
 .num-input,
 .unit-select {
-    padding: 8px;
-    font-size: 16px;
-    border: 1px solid #999;
-    border-radius: 4px;
-}
-
-.text-input {
     width: 100%;
+    padding: 10px;
+    background: #44475a;
+    color: white;
+    border: none;
+    border-radius: 8px;
     box-sizing: border-box;
+    outline: none;
 }
 .input-row {
     display: flex;
     gap: 10px;
-    align-items: center;
 }
-
 .start-btn {
-    margin-top: 10px;
-    padding: 10px 20px;
-    font-size: 16px;
-    background-color: #444;
-    color: #fff;
+    width: 100%;
+    padding: 12px;
+    background: #ff79c6;
+    color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 16px;
     cursor: pointer;
+    transition: background 0.2s;
+}
+.start-btn:hover {
+    background: #ff92d0;
+}
+.start-btn:disabled {
+    background: #444;
+    cursor: not-allowed;
 }
 
-/* メイン画面 */
-.status-banner {
-    background: #eee;
-    padding: 10px;
-    margin-bottom: 10px;
+.main-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* クイズオーバーレイ */
+.quiz-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+.quiz-card {
+    background: #282a36;
+    padding: 30px;
+    border-radius: 15px;
+    border: 3px solid #ff79c6;
+    text-align: center;
+    width: 400px;
+}
+.quiz-card h3 {
+    color: #ff79c6;
+    margin-top: 0;
+}
+.quiz-card button {
+    display: block;
+    width: 100%;
+    margin-bottom: 12px;
+    padding: 12px;
+    background: #44475a;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
     font-weight: bold;
 }
 
-#MAP_JAPAN {
-    width: 100%;
-    height: auto;
-    border: 1px solid #999;
+/* --- ★追加：アウト演出スタイル --- */
+.out-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(255, 0, 0, 0.7);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 3000; /* クイズより上 */
+    animation: flash 0.2s infinite; /* 赤い点滅アニメーション */
+    overflow: hidden;
+}
+.out-box {
+    text-align: center;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 50px;
+    border-radius: 20px;
+    border: 5px solid yellow;
+    box-shadow: 0 0 30px black;
+}
+.out-name {
+    font-size: 80px;
+    color: white;
+    text-shadow: 0 0 20px black;
+    margin: 0 0 20px 0;
+}
+.out-text {
+    font-size: 150px;
+    color: yellow;
+    text-shadow: 0 0 30px black;
+    margin: 0;
+    font-weight: 900;
 }
 
-.prefecture-path {
-    fill: #eee; /* デフォルトは薄いグレー */
-    stroke: #333;
-    stroke-width: 0.5;
-}
-
-/* エリア別カラー（filledになった時のみ適用） */
-.filled.area-6eaf401fd13748e88632632f9a1e935e {
-    fill: #00f2ff !important;
-}
-.filled.area-263693bebe0d496a83119430bef2a50a {
-    fill: #ff79c6 !important;
-}
-.filled.area-7a6b7c4ebdd74c98b63ac13b11074e69 {
-    fill: #50fa7b !important;
-}
-.filled.area-de76a2346f3748969573ed66f2e89314 {
-    fill: #bd93f9 !important;
-}
-.filled.area-29a420669269482bb2612e378548f102 {
-    fill: #ffb86c !important;
-}
-.filled.area-1c1129cc38b940f6b59754f66a2459a6 {
-    fill: #ff5555 !important;
+/* 点滅アニメーション定義 */
+@keyframes flash {
+    0% {
+        background: rgba(255, 0, 0, 0.7);
+    }
+    50% {
+        background: rgba(150, 0, 0, 0.9);
+    }
 }
