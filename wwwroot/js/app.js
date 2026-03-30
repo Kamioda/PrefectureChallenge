@@ -30,7 +30,6 @@ const State = {
     displayOutName: '',
     dedeenSE: new Audio('assets/sounds/dedeen.mp3'),
     voiceVoxUrl: 'http://localhost:11021',
-
     async init() {
         this.sessionId = this.params.get('session');
         this.oneCommeHost = this.params.get('onecomme') || '127.0.0.1';
@@ -39,7 +38,7 @@ const State = {
 
         try {
             // 地図のパスデータをロード
-            this.mapData = await m.request({ method: 'GET', url: 'data/mapData.json' });
+            this.mapData = await m.request({ method: 'GET', url: `data/mapData.json` });
         } catch (e) {
             console.error('Map Load Error', e);
         }
@@ -64,7 +63,7 @@ const State = {
                 this.sessionId = this.inputSessionId.trim();
             } else {
                 try {
-                    const res = await m.request({ method: 'GET', url: '/api/session/new' });
+                    const res = await m.request({ method: 'GET', url: `api/session/new` });
                     this.sessionId = res.sessionId;
                 } catch (e) {
                     this.statusMessage = 'エラー: セッションの発行に失敗しました';
@@ -80,7 +79,7 @@ const State = {
         window.history.pushState(
             {},
             '',
-            `?session=${this.sessionId}&name=${encodeURIComponent(this.streamerName)}&reading=${encodeURIComponent(this.streamerReading)}&interval=${finalMs}`
+            `./?session=${this.sessionId}&name=${encodeURIComponent(this.streamerName)}&reading=${encodeURIComponent(this.streamerReading)}&interval=${finalMs}`
         );
 
         this.connectMain();
@@ -91,7 +90,7 @@ const State = {
 
     connectMain() {
         const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-        this.socket = new WebSocket(`${protocol}://${window.location.host}/ws/${this.sessionId}`);
+        this.socket = new WebSocket(`${protocol}://${window.location.host}${window.location.pathname.replace(/\/[^\/]*$/, '')}/ws/${this.sessionId}`);
 
         this.socket.onopen = () => {
             // サーバーに名前とよみがな（スペース入り）を登録
