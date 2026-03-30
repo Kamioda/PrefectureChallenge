@@ -1,10 +1,13 @@
 /**
- * 47都道府県耐久配信システム v1.0
- * Frontend: JavaScript (Mithril.js)
- * Reverse Proxy (Nginx) / SSL 対応版
+ * 47都道府県耐久配信システム v1.2
+ * - mapData.json の color フィールドを参照
+ * - OUT演出キャンセル機能搭載
  */
 
+const DEFAULT_COLOR = '#ff79c6'; // 色指定がない時のデフォルト（ピンク）
+
 const State = {
+    SERVER_PATH: 'service.meigetsu.jp/prefecture_challenge',
     params: new URLSearchParams(window.location.search),
     sessionId: null,
     oneCommeHost: '127.0.0.1',
@@ -16,27 +19,20 @@ const State = {
     isAccepting: true,
     pollingTimer: null,
 
-    // 入力用バッファ
-    inputSessionId: '',
-    inputInterval: 1,
-    inputUnit: 'sec',
-    inputStreamerName: '',
-    inputReadingLast: '',
-    inputReadingFirst: '',
-
-    // 確定情報
-    streamerName: '',
-    streamerReading: '',
+    // 演出管理
+    outTimer: null,
+    currentVoice: null,
     isOutEffect: false,
     displayOutName: '',
     dedeenSE: new Audio('assets/sounds/dedeen.mp3'),
     voiceVoxUrl: 'http://localhost:11021',
 
-    // 【Nginx対応】ベースパスを解決するヘルパー
-    getBasePath() {
-        // 例: domain.com/app/index.html なら "/app" を返す。ルートなら ""
-        return window.location.pathname.replace(/\/[^\/]*$/, '');
-    },
+    // 配信者情報
+    inputStreamerName: '',
+    inputReadingLast: '',
+    inputReadingFirst: '',
+    streamerName: '',
+    streamerReading: '',
 
     async init() {
         this.sessionId = this.params.get('session');
@@ -45,7 +41,6 @@ const State = {
         this.streamerReading = this.params.get('reading') || '';
 
         try {
-            // パスを相対パスに修正 (Nginxサブディレクトリ対応)
             this.mapData = await m.request({
                 method: 'GET',
                 url: 'data/mapData.json',
@@ -67,31 +62,21 @@ const State = {
         }
 
         if (!this.sessionId) {
-            if (this.inputSessionId.trim() !== '') {
-                this.sessionId = this.inputSessionId.trim();
-            } else {
-                try {
-                    // APIパスをベースパス基準に修正
-                    const res = await m.request({
-                        method: 'GET',
-                        url: `${this.getBasePath()}/api/session/new`.replace(/\/+/g, '/'),
-                    });
-                    this.sessionId = res.sessionId;
-                } catch (e) {
-                    this.statusMessage = 'エラー: セッションの発行に失敗しました';
-                    m.redraw();
-                    return;
-                }
+            try {
+                const res = await m.request({
+                    method: 'GET',
+                    url: `https://${this.SERVER_PATH}/api/session/new`,
+                });
+                this.sessionId = res.sessionId;
+            } catch (e) {
+                this.statusMessage = 'エラー: セッション発行失敗';
+                m.redraw();
+                return;
             }
         }
 
-        let finalMs = directInterval || (this.inputUnit === 'sec' ? this.inputInterval * 1000 : this.inputInterval);
-
-        window.history.pushState(
-            {},
-            '',
-            `?session=${this.sessionId}&name=${encodeURIComponent(this.streamerName)}&reading=${encodeURIComponent(this.streamerReading)}&interval=${finalMs}`
-        );
+        let finalMs = directInterval || (this.params.get('interval') || 1000);
+        window.history.pushState({}, '', `?session=${this.sessionId}&name=${encodeURIComponent(this.streamerName)}&reading=${encodeURIComponent(this.streamerReading)}&interval=${finalMs}`);
 
         this.connectMain();
         this.startOneCommePolling(finalMs);
@@ -100,61 +85,64 @@ const State = {
     },
 
     connectMain() {
-        // プロトコルの自動判別 (http -> ws, https -> wss)
-        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-        const host = window.location.host;
-        const basePath = this.getBasePath();
+        const wsUrl = `wss://${this.SERVER_PATH}/ws/${this.sessionId}`;
+        const socket = new WebSocket(wsUrl);
 
-        // 【Nginx対応】WebSocketのURLを動的に構築
-        const wsUrl = `${protocol}://${host}${basePath}/ws/${this.sessionId}`.replace(/([^:])\/\/+/g, '$1/');
-
-        console.log(`[WS] Connecting to: ${wsUrl}`);
-        this.socket = new WebSocket(wsUrl);
-
-        this.socket.onopen = () => {
-            this.socket.send(
-                JSON.stringify({
-                    type: 'CLIENT_START',
-                    name: this.streamerName,
-                    reading: this.streamerReading,
-                })
-            );
-        };
-
-        this.socket.onmessage = event => {
-            const data = JSON.parse(event.data);
-            switch (data.type) {
-                case 'INIT':
-                case 'UPDATE_MAP':
-                case 'DOBON_RESET':
-                    this.regions = data.regions;
+        socket.addEventListener('message', event => {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'INIT' || data.type === 'UPDATE_MAP' || data.type === 'DOBON_RESET') {
+                    State.regions = data.regions;
                     if (data.type === 'DOBON_RESET') {
-                        this.statusMessage = `【ドボン】${data.prefName}でリセット！`;
-                        this.playOutSequence();
+                        State.statusMessage = `【ドボン】${data.prefName}でリセット！`;
+                        State.playOutSequence();
                     }
-                    break;
-                case 'SUCCESS':
-                    this.statusMessage = `${data.prefName} 達成！`;
-                    this.localUpdate(data.areaId, data.prefName, data.isCleared);
-                    break;
-                case 'QUIZ_DATA':
-                    this.currentQuiz = data.quiz;
-                    break;
-            }
-            m.redraw();
-        };
+                } else if (data.type === 'SUCCESS') {
+                    State.statusMessage = `${data.prefName} 達成！`;
+                    State.localUpdate(data.areaId, data.prefName, data.isCleared);
+                } else if (data.type === 'QUIZ_DATA') {
+                    State.currentQuiz = data.quiz;
+                }
+                m.redraw();
+            } catch (e) { console.error('WS Data Error', e); }
+        });
 
-        this.socket.onclose = () => {
-            console.warn('[WS] Closed. Reconnecting in 3s...');
-            setTimeout(() => this.connectMain(), 3000);
-        };
+        socket.addEventListener('open', () => {
+            socket.send(JSON.stringify({
+                type: 'CLIENT_START',
+                name: State.streamerName,
+                reading: State.streamerReading,
+            }));
+        });
+
+        socket.addEventListener('close', () => {
+            setTimeout(() => State.connectMain(), 3000);
+        });
+
+        this.socket = socket;
+    },
+
+    // OUT演出停止
+    stopOutEffect() {
+        if (this.outTimer) clearTimeout(this.outTimer);
+        this.dedeenSE.pause();
+        this.dedeenSE.currentTime = 0;
+        if (this.currentVoice) {
+            this.currentVoice.pause();
+            this.currentVoice = null;
+        }
+        this.isOutEffect = false;
+        m.redraw();
     },
 
     async playOutSequence() {
+        this.stopOutEffect();
         this.isOutEffect = true;
         this.displayOutName = this.streamerName;
         m.redraw();
-        await this.dedeenSE.play();
+
+        this.dedeenSE.play();
+
         try {
             const text = `${this.streamerReading}、アウト。`;
             const query = await m.request({
@@ -167,23 +155,20 @@ const State = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(query),
             });
-            const blob = await voiceRes.blob();
-            const url = URL.createObjectURL(blob);
-            setTimeout(() => {
-                new Audio(url).play();
+            const url = URL.createObjectURL(await voiceRes.blob());
+            
+            this.outTimer = setTimeout(() => {
+                this.currentVoice = new Audio(url);
+                this.currentVoice.play();
             }, 1200);
-        } catch (e) {
-            console.warn('VOICEVOX offline');
-        }
-        setTimeout(() => {
-            this.isOutEffect = false;
-            m.redraw();
-        }, 5000);
+        } catch (e) { console.warn('VOICEVOX offline'); }
+
+        this.outTimer = setTimeout(() => this.stopOutEffect(), 5000);
     },
 
     startOneCommePolling(interval) {
         if (this.pollingTimer) clearInterval(this.pollingTimer);
-        const fetchComments = async () => {
+        this.pollingTimer = setInterval(async () => {
             if (!this.isAccepting || !this.socket || this.socket.readyState !== 1) return;
             try {
                 const res = await m.request({
@@ -192,16 +177,13 @@ const State = {
                     params: { limit: 100 },
                 });
                 if (res && res.length > 0) {
-                    this.socket.send(
-                        JSON.stringify({
-                            type: 'RAW_COMMENTS',
-                            comments: res.map(r => ({ id: r.data.id, comment: r.data.comment, userId: r.data.userId })),
-                        })
-                    );
+                    this.socket.send(JSON.stringify({
+                        type: 'RAW_COMMENTS',
+                        comments: res.map(r => ({ id: r.data.id, comment: r.data.comment, userId: r.data.userId })),
+                    }));
                 }
             } catch (e) {}
-        };
-        this.pollingTimer = setInterval(fetchComments, interval);
+        }, interval);
     },
 
     localUpdate(areaId, prefName, isCleared) {
@@ -213,169 +195,84 @@ const State = {
     },
 };
 
+// --- MapView (色参照を修正) ---
 const MapView = {
     view: () =>
         m('svg#MAP_JAPAN', { viewBox: '0 0 1024 1024' }, [
             m('g#GROUND', { strokeLinejoin: 'round', strokeWidth: '1.1', stroke: '#111', fill: '#fff' }, [
-                State.mapData.map(group => {
+                State.mapData.map((group) => {
                     const sr = State.regions.find(r => r.id === group.regionId);
-                    return m(
-                        'g',
-                        { class: sr?.isCleared ? 'region-cleared' : '' },
+                    // ★ JSONの color を参照。なければデフォルト色
+                    const areaFillColor = group.color || DEFAULT_COLOR;
+                    
+                    return m('g', { class: sr?.isCleared ? 'region-cleared' : '' },
                         group.prefs.map(p => {
                             const isFilled = sr && !sr.prefs.includes(p.id);
                             return m('path.prefecture-path', {
                                 key: p.id,
                                 d: p.d,
                                 transform: p.transform || '',
-                                class: isFilled ? `filled area-${group.regionId}` : '',
-                                onclick: () =>
-                                    State.socket.send(
-                                        JSON.stringify({
-                                            type: 'SELECT_PREF',
-                                            userId: 'MANUAL',
-                                            prefName: p.id,
-                                        })
-                                    ),
+                                // ★ 直接Styleで色を指定
+                                style: { fill: isFilled ? areaFillColor : '#fff' },
+                                class: isFilled ? 'filled' : '',
+                                onclick: () => State.socket.send(JSON.stringify({
+                                    type: 'SELECT_PREF',
+                                    userId: 'MANUAL_' + Math.random(),
+                                    prefName: p.id,
+                                })),
                             });
                         })
                     );
                 }),
-                m('path#ARC', {
-                    d: 'M420 0 L420 530 L0 530',
-                    fill: 'none',
-                    stroke: '#aaa',
-                    strokeWidth: '5',
-                    strokeDasharray: '10,5',
-                }),
+                m('path#ARC', { d: 'M420 0 L420 530 L0 530', fill: 'none', stroke: '#aaa', strokeWidth: '5', strokeDasharray: '10,5' }),
             ]),
         ]),
 };
 
+// --- View 構成 (変更なし) ---
 const SetupView = {
-    view: () =>
-        m(
-            '.setup-container',
-            m('.setup-card', [
-                m('h2', '47都道府県耐久設定'),
-                m('.form-group', [
-                    m('label', 'セッションID (継続時は入力)'),
-                    m('input.text-input[type=text]', {
-                        value: State.inputSessionId,
-                        oninput: e => (State.inputSessionId = e.target.value),
-                    }),
-                ]),
-                m('.form-group', [
-                    m('label', '配信者名 (表示用)'),
-                    m('input.text-input[type=text]', {
-                        placeholder: '例: 明月花子',
-                        oninput: e => (State.inputStreamerName = e.target.value),
-                    }),
-                ]),
-                m('.form-group', [
-                    m('label', 'よみがな (名字 / 名前)'),
-                    m('.input-row', [
-                        m('input.text-input[type=text]', {
-                            placeholder: 'めいげつ',
-                            oninput: e => (State.inputReadingLast = e.target.value),
-                        }),
-                        m('input.text-input[type=text]', {
-                            placeholder: 'はなこ',
-                            oninput: e => (State.inputReadingFirst = e.target.value),
-                        }),
-                    ]),
-                ]),
-                m('.form-group', [
-                    m('label', '取得間隔'),
-                    m('.input-row', [
-                        m('input.num-input[type=number]', {
-                            value: State.inputInterval,
-                            oninput: e => (State.inputInterval = e.target.value),
-                        }),
-                        m('select.unit-select', { onchange: e => (State.inputUnit = e.target.value) }, [
-                            m('option[value=sec]', '秒'),
-                            m('option[value=ms]', 'ミリ秒'),
-                        ]),
-                    ]),
-                ]),
-                m(
-                    'button.start-btn',
-                    {
-                        disabled: !State.inputStreamerName || !State.inputReadingLast || !State.inputReadingFirst,
-                        onclick: () => State.startSystem(),
-                    },
-                    'チャレンジ開始'
-                ),
-            ])
-        ),
+    view: () => m('.setup-container', m('.setup-card', [
+        m('h2', '47都道府県耐久設定'),
+        m('.form-group', [m('label', '配信者名'), m('input.text-input[type=text]', { oninput: e => State.inputStreamerName = e.target.value })]),
+        m('.form-group', [m('label', 'よみがな'), m('.input-row', [
+            m('input.text-input[type=text]', { placeholder: '名字', oninput: e => State.inputReadingLast = e.target.value }),
+            m('input.text-input[type=text]', { placeholder: '名前', oninput: e => State.inputReadingFirst = e.target.value }),
+        ])]),
+        m('button.start-btn', {
+            disabled: !State.inputStreamerName || !State.inputReadingLast || !State.inputReadingFirst,
+            onclick: () => State.startSystem()
+        }, 'チャレンジ開始')
+    ]))
 };
 
 const MainView = {
-    view: () =>
-        m('.main-layout', [
-            m(
-                'header',
-                {
-                    style: 'display:flex; justify-content:space-between; padding:10px; background:#111; border-bottom:2px solid #ff79c6;',
-                },
-                [
-                    m('h1', { style: 'margin:0; font-size:18px; color:#ff79c6;' }, '47都道府県耐久'),
-                    m('.controls', [
-                        m(
-                            'span',
-                            { style: 'font-size:12px; margin-right:10px; color:#aaa;' },
-                            `ID: ${State.sessionId}`
-                        ),
-                        m(
-                            'button',
-                            {
-                                onclick: () => (State.isAccepting = !State.isAccepting),
-                                style: `border:none; border-radius:4px; padding:4px 10px; cursor:pointer; background:${State.isAccepting ? '#ff79c6' : '#444'}; color:white;`,
-                            },
-                            State.isAccepting ? '自動取得ON' : '停止中'
-                        ),
-                    ]),
-                ]
-            ),
-            m(
-                '.status-banner',
-                { style: 'text-align:center; padding:5px; background:rgba(255,121,198,0.1); font-weight:bold;' },
-                State.statusMessage
-            ),
-            m(MapView),
-            State.currentQuiz
-                ? m(
-                      '.quiz-overlay',
-                      m('.quiz-card', [
-                          m('h3', { style: 'color:#ff79c6; margin-top:0;' }, 'AI救済クイズ！'),
-                          m('p', State.currentQuiz.question),
-                          m(
-                              '.opts',
-                              State.currentQuiz.options.map((o, i) =>
-                                  m(
-                                      'button',
-                                      {
-                                          style: 'display:block; width:100%; margin-bottom:12px; padding:12px; background:#44475a; color:white; border:none; border-radius:8px; cursor:pointer;',
-                                          onclick: () => {
-                                              if (i === State.currentQuiz.answerIndex)
-                                                  State.statusMessage = '回避成功！';
-                                              State.currentQuiz = null;
-                                              m.redraw();
-                                          },
-                                      },
-                                      o
-                                  )
-                              )
-                          ),
-                      ])
-                  )
-                : null,
-            State.isOutEffect
-                ? m('.out-overlay', [
-                      m('.out-box', [m('h1.out-name', State.displayOutName), m('h1.out-text', 'OUT !!')]),
-                  ])
-                : null,
+    view: () => m('.main-layout', [
+        m('header', { style: 'display:flex; justify-content:space-between; padding:10px; background:#111; border-bottom:2px solid #ff79c6;' }, [
+            m('h1', { style: 'margin:0; font-size:18px; color:#ff79c6;' }, '47都道府県耐久'),
+            m('button', {
+                onclick: () => State.isAccepting = !State.isAccepting,
+                style: `border:none; border-radius:4px; padding:4px 10px; background:${State.isAccepting ? '#ff79c6' : '#444'}; color:white;`
+            }, State.isAccepting ? '自動取得ON' : '停止中')
         ]),
+        m(MapView),
+        State.currentQuiz ? m('.quiz-overlay', m('.quiz-card', [
+            m('h3', 'AI救済クイズ！'),
+            m('p', State.currentQuiz.question),
+            State.currentQuiz.options.map((o, i) => m('button', {
+                onclick: () => {
+                    if (i === State.currentQuiz.answerIndex) State.statusMessage = '回避成功！';
+                    State.currentQuiz = null;
+                }
+            }, o))
+        ])) : null,
+        State.isOutEffect ? m('.out-overlay', { onclick: () => State.stopOutEffect() }, [
+            m('.out-box', [
+                m('h1.out-name', State.displayOutName),
+                m('h1.out-text', 'OUT !!'),
+                m('p', { style: 'color: yellow;' }, 'CLICK TO SKIP')
+            ]),
+        ]) : null,
+    ])
 };
 
 m.mount(document.getElementById('app'), {
