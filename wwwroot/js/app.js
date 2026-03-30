@@ -1,6 +1,7 @@
 /**
  * 47都道府県耐久配信システム v1.0
  * Frontend: JavaScript (Mithril.js)
+ * Reverse Proxy (Nginx) / SSL 対応版
  */
 
 const State = {
@@ -19,17 +20,24 @@ const State = {
     inputSessionId: '',
     inputInterval: 1,
     inputUnit: 'sec',
-    inputStreamerName: '', // 表示名
-    inputReadingLast: '', // よみがな（名字）
-    inputReadingFirst: '', // よみがな（名前）
+    inputStreamerName: '',
+    inputReadingLast: '',
+    inputReadingFirst: '',
 
     // 確定情報
     streamerName: '',
-    streamerReading: '', // 名字と名前をスペースで結合したもの
+    streamerReading: '',
     isOutEffect: false,
     displayOutName: '',
     dedeenSE: new Audio('assets/sounds/dedeen.mp3'),
     voiceVoxUrl: 'http://localhost:11021',
+
+    // 【Nginx対応】ベースパスを解決するヘルパー
+    getBasePath() {
+        // 例: domain.com/app/index.html なら "/app" を返す。ルートなら ""
+        return window.location.pathname.replace(/\/[^\/]*$/, '');
+    },
+
     async init() {
         this.sessionId = this.params.get('session');
         this.oneCommeHost = this.params.get('onecomme') || '127.0.0.1';
@@ -37,13 +45,15 @@ const State = {
         this.streamerReading = this.params.get('reading') || '';
 
         try {
-            // 地図のパスデータをロード
-            this.mapData = await m.request({ method: 'GET', url: `data/mapData.json` });
+            // パスを相対パスに修正 (Nginxサブディレクトリ対応)
+            this.mapData = await m.request({
+                method: 'GET',
+                url: 'data/mapData.json',
+            });
         } catch (e) {
             console.error('Map Load Error', e);
         }
 
-        // URLパラメータに情報があれば自動復帰
         if (this.sessionId && this.streamerName) {
             const pInterval = this.params.get('interval') || 1000;
             this.startSystem(parseInt(pInterval));
@@ -51,19 +61,21 @@ const State = {
     },
 
     async startSystem(directInterval = null) {
-        // 1. 表示名と読み仮名の確定（名字と名前の間にスペースを挟む）
         if (!this.streamerName) {
             this.streamerName = this.inputStreamerName.trim();
             this.streamerReading = `${this.inputReadingLast.trim()} ${this.inputReadingFirst.trim()}`;
         }
 
-        // 2. セッションIDの確定
         if (!this.sessionId) {
             if (this.inputSessionId.trim() !== '') {
                 this.sessionId = this.inputSessionId.trim();
             } else {
                 try {
-                    const res = await m.request({ method: 'GET', url: `api/session/new` });
+                    // APIパスをベースパス基準に修正
+                    const res = await m.request({
+                        method: 'GET',
+                        url: `${this.getBasePath()}/api/session/new`.replace(/\/+/g, '/'),
+                    });
                     this.sessionId = res.sessionId;
                 } catch (e) {
                     this.statusMessage = 'エラー: セッションの発行に失敗しました';
@@ -75,11 +87,10 @@ const State = {
 
         let finalMs = directInterval || (this.inputUnit === 'sec' ? this.inputInterval * 1000 : this.inputInterval);
 
-        // URLパラメータを更新
         window.history.pushState(
             {},
             '',
-            `./?session=${this.sessionId}&name=${encodeURIComponent(this.streamerName)}&reading=${encodeURIComponent(this.streamerReading)}&interval=${finalMs}`
+            `?session=${this.sessionId}&name=${encodeURIComponent(this.streamerName)}&reading=${encodeURIComponent(this.streamerReading)}&interval=${finalMs}`
         );
 
         this.connectMain();
@@ -89,11 +100,18 @@ const State = {
     },
 
     connectMain() {
+        // プロトコルの自動判別 (http -> ws, https -> wss)
         const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-        this.socket = new WebSocket(`${protocol}://${window.location.host}${window.location.pathname.replace(/\/[^\/]*$/, '')}/ws/${this.sessionId}`);
+        const host = window.location.host;
+        const basePath = this.getBasePath();
+
+        // 【Nginx対応】WebSocketのURLを動的に構築
+        const wsUrl = `${protocol}://${host}${basePath}/ws/${this.sessionId}`.replace(/([^:])\/\/+/g, '$1/');
+
+        console.log(`[WS] Connecting to: ${wsUrl}`);
+        this.socket = new WebSocket(wsUrl);
 
         this.socket.onopen = () => {
-            // サーバーに名前とよみがな（スペース入り）を登録
             this.socket.send(
                 JSON.stringify({
                     type: 'CLIENT_START',
@@ -124,6 +142,11 @@ const State = {
                     break;
             }
             m.redraw();
+        };
+
+        this.socket.onclose = () => {
+            console.warn('[WS] Closed. Reconnecting in 3s...');
+            setTimeout(() => this.connectMain(), 3000);
         };
     },
 
@@ -245,7 +268,7 @@ const SetupView = {
                 m('.form-group', [
                     m('label', '配信者名 (表示用)'),
                     m('input.text-input[type=text]', {
-                        placeholder: '例: 桜羽ありす',
+                        placeholder: '例: 明月花子',
                         oninput: e => (State.inputStreamerName = e.target.value),
                     }),
                 ]),
@@ -253,11 +276,11 @@ const SetupView = {
                     m('label', 'よみがな (名字 / 名前)'),
                     m('.input-row', [
                         m('input.text-input[type=text]', {
-                            placeholder: 'さくらは',
+                            placeholder: 'めいげつ',
                             oninput: e => (State.inputReadingLast = e.target.value),
                         }),
                         m('input.text-input[type=text]', {
-                            placeholder: 'ありす',
+                            placeholder: 'はなこ',
                             oninput: e => (State.inputReadingFirst = e.target.value),
                         }),
                     ]),
