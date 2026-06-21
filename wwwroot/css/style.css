@@ -169,10 +169,143 @@ path#ARC {
     text-shadow: 0 0 15px rgba(255, 85, 85, 0.4);
 }
 
-/* --- アウト演出 (ドボン) --- */
+/* --- アウト演出 (ドボン: ヒビ割れ) --- */
 .out-overlay {
-    background: rgba(255, 0, 0, 0.7);
-    animation: flash 0.2s infinite;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.22);
+}
+.crack-overlay {
+    animation: screenImpact 0.18s ease-out 2;
+}
+.crack-overlay.map-revealed {
+    background: transparent;
+}
+.crack-overlay.map-revealed .crack-web {
+    opacity: 0.65;
+    filter: drop-shadow(0 0 4px rgba(120, 220, 255, 0.85));
+}
+.crack-overlay.map-revealed .glass-shard {
+    opacity: 0.26;
+    background: rgba(120, 190, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+.crack-overlay.map-revealed .crack-caption {
+    opacity: 0;
+    transform: scale(0.92) translateY(20px);
+    pointer-events: none;
+}
+.crack-flash {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 48%, rgba(255, 255, 255, 0.95), rgba(255, 85, 85, 0.35) 26%, transparent 58%);
+    animation: impactFlash 0.75s ease-out forwards;
+    pointer-events: none;
+}
+.crack-web {
+    position: absolute;
+    inset: -5%;
+    background:
+        linear-gradient(18deg, transparent 48.7%, rgba(255, 255, 255, 0.95) 49%, rgba(140, 220, 255, 0.95) 49.4%, transparent 49.8%),
+        linear-gradient(55deg, transparent 49.1%, rgba(255, 255, 255, 0.9) 49.4%, rgba(140, 220, 255, 0.9) 49.8%, transparent 50.2%),
+        linear-gradient(96deg, transparent 49.2%, rgba(255, 255, 255, 0.9) 49.5%, rgba(140, 220, 255, 0.9) 49.9%, transparent 50.25%),
+        linear-gradient(136deg, transparent 49%, rgba(255, 255, 255, 0.95) 49.35%, rgba(140, 220, 255, 0.95) 49.75%, transparent 50.15%),
+        linear-gradient(162deg, transparent 48.9%, rgba(255, 255, 255, 0.85) 49.25%, rgba(140, 220, 255, 0.85) 49.6%, transparent 50%),
+        radial-gradient(circle at 50% 50%, transparent 0 7%, rgba(255, 255, 255, 0.9) 7.5%, transparent 8.2%),
+        radial-gradient(circle at 50% 50%, transparent 0 15%, rgba(255, 255, 255, 0.55) 15.4%, transparent 16.1%),
+        radial-gradient(circle at 50% 50%, transparent 0 26%, rgba(255, 255, 255, 0.35) 26.5%, transparent 27.2%);
+    filter: drop-shadow(0 0 6px rgba(120, 220, 255, 0.95)) drop-shadow(0 0 18px rgba(255, 255, 255, 0.35));
+    opacity: 0;
+    transform: scale(0.35);
+    animation: crackSpread 1.15s cubic-bezier(0.15, 0.8, 0.2, 1) forwards;
+    pointer-events: none;
+}
+.shatter-field {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+.glass-shard {
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(130deg, rgba(255, 255, 255, 0.16), transparent 42%),
+        rgba(120, 190, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    opacity: 0;
+    backdrop-filter: blur(1px);
+    animation: shardBreak 3.2s cubic-bezier(0.18, 0.72, 0.22, 1) 1s forwards;
+}
+.shard-1 {
+    clip-path: polygon(0 0, 35% 0, 49% 49%, 0 32%);
+    --shard-x: -9vw;
+    --shard-y: -7vh;
+    --shard-r: -8deg;
+}
+.shard-2 {
+    clip-path: polygon(35% 0, 62% 0, 50% 50%, 49% 49%);
+    --shard-x: -1vw;
+    --shard-y: -10vh;
+    --shard-r: 4deg;
+}
+.shard-3 {
+    clip-path: polygon(62% 0, 100% 0, 100% 28%, 51% 50%);
+    --shard-x: 10vw;
+    --shard-y: -7vh;
+    --shard-r: 9deg;
+}
+.shard-4 {
+    clip-path: polygon(0 32%, 49% 49%, 31% 68%, 0 100%);
+    --shard-x: -13vw;
+    --shard-y: 2vh;
+    --shard-r: -12deg;
+}
+.shard-5 {
+    clip-path: polygon(49% 49%, 51% 50%, 59% 100%, 31% 68%);
+    --shard-x: -2vw;
+    --shard-y: 9vh;
+    --shard-r: -3deg;
+}
+.shard-6 {
+    clip-path: polygon(51% 50%, 100% 28%, 100% 63%, 59% 100%);
+    --shard-x: 12vw;
+    --shard-y: 3vh;
+    --shard-r: 11deg;
+}
+.shard-7 {
+    clip-path: polygon(0 100%, 31% 68%, 59% 100%);
+    --shard-x: -7vw;
+    --shard-y: 12vh;
+    --shard-r: 7deg;
+}
+.shard-8 {
+    clip-path: polygon(59% 100%, 100% 63%, 100% 100%);
+    --shard-x: 9vw;
+    --shard-y: 13vh;
+    --shard-r: -7deg;
+}
+.shard-9 {
+    clip-path: polygon(42% 30%, 50% 50%, 34% 57%, 27% 42%);
+    --shard-x: -4vw;
+    --shard-y: -2vh;
+    --shard-r: -18deg;
+}
+.shard-10 {
+    clip-path: polygon(50% 50%, 67% 39%, 72% 58%, 56% 63%);
+    --shard-x: 5vw;
+    --shard-y: -1vh;
+    --shard-r: 18deg;
+}
+.shard-11 {
+    clip-path: polygon(38% 58%, 50% 50%, 56% 72%, 43% 79%);
+    --shard-x: -3vw;
+    --shard-y: 5vh;
+    --shard-r: 10deg;
+}
+.shard-12 {
+    clip-path: polygon(50% 50%, 62% 61%, 55% 76%, 45% 63%);
+    --shard-x: 4vw;
+    --shard-y: 6vh;
+    --shard-r: -10deg;
 }
 .out-box {
     background: rgba(0, 0, 0, 0.8);
@@ -182,16 +315,31 @@ path#ARC {
     box-shadow: 0 0 50px black;
     text-align: center;
 }
+.crack-caption {
+    position: relative;
+    z-index: 2;
+    min-width: min(720px, 86vw);
+    border-color: #ff5555;
+    background: rgba(0, 0, 0, 0.78);
+    box-shadow:
+        0 0 45px rgba(255, 85, 85, 0.8),
+        inset 0 0 28px rgba(255, 85, 85, 0.25);
+    animation: captionCrash 4.4s ease-out forwards;
+}
 .out-name {
     font-size: 80px;
     color: white;
     margin: 0;
+    text-shadow: 0 0 18px rgba(255, 255, 255, 0.8);
 }
 .out-text {
     font-size: 150px;
-    color: yellow;
+    color: #ff5555;
     font-weight: 900;
     margin: 0;
+    text-shadow:
+        0 0 22px rgba(255, 85, 85, 1),
+        5px 5px 0 #111;
 }
 
 /* --- 常駐テロップ --- */
@@ -271,6 +419,87 @@ path#ARC {
     }
     50% {
         background: rgba(150, 0, 0, 0.8);
+    }
+}
+
+@keyframes screenImpact {
+    0%,
+    100% {
+        transform: translate(0);
+    }
+    25% {
+        transform: translate(-10px, 6px);
+    }
+    50% {
+        transform: translate(8px, -4px);
+    }
+    75% {
+        transform: translate(-5px, -7px);
+    }
+}
+
+@keyframes impactFlash {
+    0% {
+        opacity: 1;
+        transform: scale(0.15);
+    }
+    45% {
+        opacity: 0.75;
+        transform: scale(1.15);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1.5);
+    }
+}
+
+@keyframes crackSpread {
+    0% {
+        opacity: 0;
+        transform: scale(0.25) rotate(-2deg);
+    }
+    18% {
+        opacity: 1;
+    }
+    70%,
+    100% {
+        opacity: 1;
+        transform: scale(1) rotate(0);
+    }
+}
+
+@keyframes shardBreak {
+    0% {
+        opacity: 0;
+        transform: translate(0, 0) rotate(0) scale(1);
+    }
+    12% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0.95;
+        transform: translate(var(--shard-x), var(--shard-y)) rotate(var(--shard-r)) scale(1.03);
+    }
+}
+
+@keyframes captionCrash {
+    0% {
+        opacity: 0;
+        transform: scale(1.35) rotate(-2deg);
+        filter: blur(10px);
+    }
+    18% {
+        opacity: 1;
+        transform: scale(1) rotate(0);
+        filter: blur(0);
+    }
+    65% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0.9;
+        transform: scale(0.92) translateY(16px);
     }
 }
 
