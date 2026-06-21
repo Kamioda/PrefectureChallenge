@@ -3,33 +3,110 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>47都道府県耐久</title>
-        <link
-            rel="stylesheet"
-            href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/css/bootstrap.min.css"
-            integrity="sha512-2bBQCjcnw658Lho4nlXJcc6WkV/UxpE/sAokbXPxQNGqmNdQrWqtw26Ns9kFF/yG792pKR1Sx8/Y1Lf1XN4GKA=="
-            crossorigin="anonymous"
-            referrerpolicy="no-referrer"
+        <meta
+            name="description"
+            content="視聴者のコメントで47都道府県を埋めていく、ドボンありの配信向け耐久チャレンジ。"
         />
+        <title>トップ - ドボンあり!! 都道府県耐久チャレンジ</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link
-            href="https://fonts.googleapis.com/css2?family=Exo+2:wght@700&family=Noto+Sans+JP:wght@700&display=swap"
+            href="https://fonts.googleapis.com/css2?family=Exo+2:wght@700;800&family=Noto+Sans+JP:wght@400;600;700;900&display=swap"
             rel="stylesheet"
         />
-        <link rel="stylesheet" href="css/style.css" />
-        <script
-            src="https://cdnjs.cloudflare.com/ajax/libs/mithril/2.3.7/mithril.js"
-            integrity="sha512-Bnb/2DuY8zeGPUHD/RFfhIakkQvo2vzO924ldPzvX8z7VrGXAWU16W5ZKDN/Dr2cZ+BYMATp+CwVLY8fVD0zkA=="
-            crossorigin="anonymous"
-            referrerpolicy="no-referrer"
-        ></script>
-        <script defer type="module" src="js/app.js"></script>
+        <link rel="stylesheet" href="css/home.css" />
+        <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+        <script>
+            window.addEventListener('DOMContentLoaded', () => lucide.createIcons());
+        </script>
     </head>
     <body>
-        <div id="app"></div>
-        <footer class="border-top footer text-muted">
-            <div class="container">
-                <p>Copyright &copy; 2026 Meigetsu. All rights reserved</p>
-            </div>
+        <header class="site-header">
+            <a class="brand" href="index.html" aria-label="都道府県耐久チャレンジ トップ">
+                <span class="brand-mark">47</span>
+                <span>都道府県耐久</span>
+            </a>
+            <span class="header-note">FOR STREAMERS</span>
+        </header>
+
+        <main>
+            <section class="hero" aria-labelledby="hero-title">
+                <div class="hero-map" aria-hidden="true"></div>
+                <div class="hero-inner">
+                    <p class="eyebrow">コメント参加型・配信チャレンジ</p>
+                    <h1 id="hero-title">ドボンあり!!<br />都道府県耐久<span class="title-break">チャレンジ</span></h1>
+                    <p class="hero-copy">
+                        視聴者から届く都道府県名で、日本地図を47色に。<br />ただし、各エリアにはひとつだけ秘密のドボンが潜んでいます。
+                    </p>
+
+                    <div class="entry-actions" aria-label="プレイ人数を選択">
+                        <a class="entry-link entry-link-primary" href="app.html">
+                            <span class="entry-icon"><i data-lucide="user-round"></i></span>
+                            <span class="entry-text">
+                                <strong>一人でチャレンジ</strong>
+                                <small>通常のゲーム画面を開始</small>
+                            </span>
+                            <i class="entry-arrow" data-lucide="arrow-right"></i>
+                        </a>
+                        <a class="entry-link entry-link-secondary" href="create_session.html">
+                            <span class="entry-icon"><i data-lucide="users-round"></i></span>
+                            <span class="entry-text">
+                                <strong>複数人でチャレンジ</strong>
+                                <small>共通セッションURLを作成</small>
+                            </span>
+                            <i class="entry-arrow" data-lucide="arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <section class="how-it-works" aria-labelledby="how-title">
+                <div class="section-inner">
+                    <div class="section-heading">
+                        <p class="eyebrow eyebrow-dark">HOW TO PLAY</p>
+                        <h2 id="how-title">コメントが、そのままゲームになる。</h2>
+                        <p>わんコメと連携して、配信中の都道府県コメントをリアルタイムに日本地図へ反映します。</p>
+                    </div>
+
+                    <ol class="steps">
+                        <li>
+                            <span class="step-number">01</span>
+                            <i data-lucide="message-circle"></i>
+                            <h3>都道府県をコメント</h3>
+                            <p>視聴者がまだ埋まっていない都道府県名を送信します。</p>
+                        </li>
+                        <li>
+                            <span class="step-number">02</span>
+                            <i data-lucide="map"></i>
+                            <h3>日本地図が色づく</h3>
+                            <p>正解した都道府県がエリアカラーで塗られていきます。</p>
+                        </li>
+                        <li>
+                            <span class="step-number">03</span>
+                            <i data-lucide="triangle-alert"></i>
+                            <h3>ドボンに注意</h3>
+                            <p>秘密のドボンを引くと、そのエリアの進捗がリセットされます。</p>
+                        </li>
+                    </ol>
+                </div>
+            </section>
+
+            <section class="play-modes" aria-labelledby="modes-title">
+                <div class="section-inner modes-layout">
+                    <div>
+                        <p class="eyebrow">PLAY YOUR WAY</p>
+                        <h2 id="modes-title">一人の耐久にも、みんなの企画にも。</h2>
+                    </div>
+                    <p>
+                        一人で47都道府県制覇を目指す通常モードと、同じセッションを共有して複数人で挑むモードを用意しています。
+                    </p>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <span>47都道府県耐久チャレンジ</span>
+            <span>Copyright &copy; 2026 Meigetsu.</span>
         </footer>
     </body>
 </html>
