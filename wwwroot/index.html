@@ -26,7 +26,13 @@
                 <span class="brand-mark">47</span>
                 <span>都道府県耐久</span>
             </a>
-            <span class="header-note">FOR STREAMERS</span>
+            <nav class="header-actions" aria-label="ガイド">
+                <a class="guide-link" href="how_to_setup_obs.html">
+                    <i data-lucide="monitor-cog"></i>
+                    <span>OBS設定ガイド</span>
+                </a>
+                <span class="header-note">FOR STREAMERS</span>
+            </nav>
         </header>
 
         <main>
@@ -88,6 +94,52 @@
                             <p>秘密のドボンを引くと、そのエリアの進捗がリセットされます。</p>
                         </li>
                     </ol>
+                </div>
+            </section>
+
+            <section class="required-apps" aria-labelledby="apps-title">
+                <div class="section-inner">
+                    <div class="apps-heading">
+                        <div>
+                            <p class="eyebrow eyebrow-dark">REQUIRED APPS</p>
+                            <h2 id="apps-title">事前に用意するアプリ</h2>
+                        </div>
+                        <p>コメント連携にはわんコメが必要です。VOICEVOXは音声演出を利用したい場合のみ用意してください。</p>
+                    </div>
+
+                    <div class="app-list">
+                        <article class="app-item app-required">
+                            <div class="app-icon"><i data-lucide="messages-square"></i></div>
+                            <div class="app-content">
+                                <div class="app-title-row">
+                                    <h3>わんコメ</h3>
+                                    <span class="app-badge badge-required">必須</span>
+                                </div>
+                                <p>配信コメントをゲームへ取り込むために使用します。ゲームを始める前に起動してください。</p>
+                                <p class="app-note">
+                                    <i data-lucide="shield-check"></i>
+                                    <span>わんコメのAPIの許可ホストに <code>service.meigetsu.jp</code> を登録してください。</span>
+                                </p>
+                            </div>
+                            <a href="https://onecomme.com/" target="_blank" rel="noopener noreferrer">
+                                <span>公式サイト</span><i data-lucide="arrow-up-right"></i>
+                            </a>
+                        </article>
+
+                        <article class="app-item">
+                            <div class="app-icon"><i data-lucide="audio-lines"></i></div>
+                            <div class="app-content">
+                                <div class="app-title-row">
+                                    <h3>VOICEVOX</h3>
+                                    <span class="app-badge badge-optional">任意</span>
+                                </div>
+                                <p>ドボン時の「アウト」音声を読み上げます。インストールしていなくてもゲームは動作します。</p>
+                            </div>
+                            <a href="https://voicevox.hiroshiba.jp/" target="_blank" rel="noopener noreferrer">
+                                <span>公式サイト</span><i data-lucide="arrow-up-right"></i>
+                            </a>
+                        </article>
+                    </div>
                 </div>
             </section>
 

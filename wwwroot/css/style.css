@@ -7,6 +7,57 @@ body {
     overflow: hidden;
 }
 
+.main-layout > header {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    background: rgba(17, 18, 24, 0.88);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+    backdrop-filter: blur(8px);
+}
+
+.main-layout > header h1 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.game-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.game-controls button {
+    min-height: 34px;
+    padding: 7px 11px;
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    border-radius: 5px;
+    background: #282a36;
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.game-controls button:hover,
+.game-controls button:focus-visible {
+    border-color: #48d6d2;
+    outline: none;
+}
+
+.game-controls .accept-toggle.is-active {
+    border-color: #50fa7b;
+    color: #50fa7b;
+}
+
 /* --- 日本地図 --- */
 svg#MAP_JAPAN {
     width: 100%;

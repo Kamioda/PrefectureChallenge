@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="ja">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="description" content="都道府県耐久チャレンジをOBSのブラウザソースとカスタムドックへ追加する手順。" />
+        <title>OBSの設定方法 - ドボンあり!! 都道府県耐久チャレンジ</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Exo+2:wght@700;800&family=Noto+Sans+JP:wght@400;600;700;900&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" href="css/obs-guide.css" />
+        <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+        <script>
+            async function copyGuideUrl(button, inputId) {
+                const input = document.getElementById(inputId);
+                try {
+                    await navigator.clipboard.writeText(input.value);
+                    button.dataset.copied = 'true';
+                    button.setAttribute('aria-label', 'コピーしました');
+                    setTimeout(() => {
+                        delete button.dataset.copied;
+                        button.setAttribute('aria-label', 'URLをコピー');
+                    }, 1600);
+                } catch (error) {
+                    input.select();
+                }
+            }
+
+            window.addEventListener('DOMContentLoaded', () => lucide.createIcons());
+        </script>
+    </head>
+    <body>
+        <header class="guide-header">
+            <a class="brand" href="index.html" aria-label="都道府県耐久チャレンジ トップ">
+                <span class="brand-mark">47</span>
+                <span>都道府県耐久</span>
+            </a>
+            <a class="back-link" href="index.html"><i data-lucide="arrow-left"></i><span>トップへ戻る</span></a>
+        </header>
+
+        <main>
+            <section class="guide-intro">
+                <div class="guide-inner intro-layout">
+                    <div>
+                        <p class="eyebrow">OBS SETUP GUIDE</p>
+                        <h1>OBSの設定方法</h1>
+                        <p class="lead">
+                            ゲーム画面をブラウザソースへ追加する手順と、セッション作成画面をカスタムドックへ置く方法を案内します。
+                        </p>
+                    </div>
+                    <div class="ratio-visual" aria-label="推奨サイズは幅800、高さ1000">
+                        <div class="ratio-screen">
+                            <i data-lucide="map"></i>
+                            <span>GAME</span>
+                        </div>
+                        <div class="ratio-labels">
+                            <span><b>幅</b> 800</span>
+                            <span><b>高さ</b> 1000</span>
+                        </div>
+                        <strong>縦 : 横 = 5 : 4</strong>
+                    </div>
+                </div>
+            </section>
+
+            <section class="important-note" aria-labelledby="important-title">
+                <div class="guide-inner note-layout">
+                    <i data-lucide="circle-alert"></i>
+                    <div>
+                        <h2 id="important-title">固定URLをそのままOBSへ入れないでください</h2>
+                        <p>
+                            先にMicrosoft Edgeなどのブラウザでセッションを作成します。ゲーム開始後、アドレスバーに表示された
+                            <strong>セッション情報付きの完全なURL</strong>をOBSへ設定してください。
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="setup-section" aria-labelledby="browser-source-title">
+                <div class="guide-inner">
+                    <div class="section-title-row">
+                        <span class="section-index">01</span>
+                        <div>
+                            <p class="eyebrow eyebrow-pink">REQUIRED</p>
+                            <h2 id="browser-source-title">ブラウザソースへゲーム画面を追加</h2>
+                        </div>
+                    </div>
+
+                    <ol class="instruction-list">
+                        <li>
+                            <span class="instruction-number">1</span>
+                            <div class="instruction-body">
+                                <h3>ブラウザでゲーム画面を開く</h3>
+                                <p>Microsoft Edgeなどで次のページを開き、配信者名と読み仮名を入力してゲームを開始します。</p>
+                                <div class="url-field">
+                                    <input
+                                        id="game-url"
+                                        type="text"
+                                        readonly
+                                        value="https://service.meigetsu.jp/prefecture_challenge/app.html"
+                                        aria-label="ゲーム画面URL"
+                                    />
+                                    <button
+                                        type="button"
+                                        aria-label="URLをコピー"
+                                        title="URLをコピー"
+                                        onclick="copyGuideUrl(this, 'game-url')"
+                                    >
+                                        <i data-lucide="copy"></i>
+                                        <i class="copied-icon" data-lucide="check"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </li>
+                        <li>
+                            <span class="instruction-number">2</span>
+                            <div class="instruction-body">
+                                <h3>開始後のアドレスをコピー</h3>
+                                <p>
+                                    ゲーム開始後、アドレスバーのURLに <code>?session=...</code>
+                                    などの情報が追加されます。そのURLを省略せず、最後までコピーします。
+                                </p>
+                                <div class="address-example" aria-label="セッション付きURLの例">
+                                    <span class="browser-dot"></span><span class="browser-dot"></span><span class="browser-dot"></span>
+                                    <code>https://.../app.html?session=abc123&amp;name=...</code>
+                                </div>
+                            </div>
+                        </li>
+                        <li>
+                            <span class="instruction-number">3</span>
+                            <div class="instruction-body">
+                                <h3>OBSでブラウザソースを作成</h3>
+                                <p>
+                                    OBSの「ソース」にある <strong>＋</strong> を押し、<strong>ブラウザ</strong>を選択します。新規作成後、
+                                    「URL」へ手順2でコピーしたアドレスを貼り付けます。
+                                </p>
+                                <div class="obs-path" aria-label="OBSでの操作順">
+                                    <span>ソース</span><i data-lucide="chevron-right"></i><span>＋</span
+                                    ><i data-lucide="chevron-right"></i><span>ブラウザ</span>
+                                </div>
+                            </div>
+                        </li>
+                        <li>
+                            <span class="instruction-number">4</span>
+                            <div class="instruction-body">
+                                <h3>サイズを設定</h3>
+                                <p>
+                                    ブラウザソースの幅と高さを設定します。縦長の <strong>縦 : 横 = 5 : 4</strong>
+                                    がおすすめです。
+                                </p>
+                                <dl class="size-values">
+                                    <div><dt>幅</dt><dd>800</dd></div>
+                                    <div><dt>高さ</dt><dd>1000</dd></div>
+                                </dl>
+                            </div>
+                        </li>
+                    </ol>
+                </div>
+            </section>
+
+            <section class="setup-section dock-section" aria-labelledby="custom-dock-title">
+                <div class="guide-inner">
+                    <div class="section-title-row">
+                        <span class="section-index">02</span>
+                        <div>
+                            <p class="eyebrow eyebrow-cyan">OPTIONAL</p>
+                            <h2 id="custom-dock-title">
+                                セッション作成画面を<span class="heading-continuation">カスタムドックへ追加</span>
+                            </h2>
+                            <p class="section-description">複数人で挑戦する機会が多い場合は、OBS内から共通セッションを発行できます。</p>
+                        </div>
+                    </div>
+
+                    <div class="dock-layout">
+                        <ol class="compact-steps">
+                            <li><span>1</span><p>OBS上部メニューの<strong>「ドック」</strong>を開きます。</p></li>
+                            <li><span>2</span><p><strong>「カスタムブラウザドック」</strong>を選択します。</p></li>
+                            <li><span>3</span><p>ドック名とURLを入力して<strong>「適用」</strong>を押します。</p></li>
+                        </ol>
+
+                        <div class="dock-settings" aria-label="カスタムドックの設定例">
+                            <div class="mock-window-title"><i data-lucide="panel-top"></i>カスタムブラウザドック</div>
+                            <label for="dock-name">ドック名</label>
+                            <input id="dock-name" type="text" readonly value="都道府県耐久 セッション作成" />
+                            <label for="dock-url">URL</label>
+                            <div class="url-field">
+                                <input
+                                    id="dock-url"
+                                    type="text"
+                                    readonly
+                                    value="https://service.meigetsu.jp/prefecture_challenge/create_session.html"
+                                />
+                                <button
+                                    type="button"
+                                    aria-label="URLをコピー"
+                                    title="URLをコピー"
+                                    onclick="copyGuideUrl(this, 'dock-url')"
+                                >
+                                    <i data-lucide="copy"></i>
+                                    <i class="copied-icon" data-lucide="check"></i>
+                                </button>
+                            </div>
+                            <div class="mock-actions"><span>キャンセル</span><strong>適用</strong></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <span>47都道府県耐久チャレンジ</span>
+            <span>Copyright &copy; 2026 Meigetsu.</span>
+        </footer>
+    </body>
+</html>

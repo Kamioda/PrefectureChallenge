@@ -17,6 +17,8 @@ const State = {
     mapData: [],
     regions: [],
     isAccepting: true,
+    urlCopyState: 'idle',
+    urlCopyResetTimer: null,
     oneCommeRetryTimer: null,
 
     // --- 音響設定 ---
@@ -88,6 +90,35 @@ const State = {
 
         this.connectMain();
         this.startOneCommeSdk(finalMs);
+        m.redraw();
+    },
+
+    async copyCurrentUrl() {
+        try {
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(window.location.href);
+            } else {
+                const textarea = document.createElement('textarea');
+                textarea.value = window.location.href;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                const copied = document.execCommand('copy');
+                textarea.remove();
+                if (!copied) throw new Error('Copy command failed');
+            }
+            this.urlCopyState = 'copied';
+        } catch (error) {
+            console.warn('URL copy failed', error);
+            this.urlCopyState = 'failed';
+        }
+
+        if (this.urlCopyResetTimer) clearTimeout(this.urlCopyResetTimer);
+        this.urlCopyResetTimer = setTimeout(() => {
+            this.urlCopyState = 'idle';
+            m.redraw();
+        }, 1800);
         m.redraw();
     },
 
@@ -318,11 +349,26 @@ const MainView = {
         m('.main-layout', [
             m('header', [
                 m('h1', '47都道府県耐久'),
-                m(
-                    'button',
-                    { onclick: () => (State.isAccepting = !State.isAccepting) },
-                    State.isAccepting ? '自動取得ON' : '停止中'
-                ),
+                m('.game-controls', [
+                    m(
+                        'button.url-copy-btn',
+                        { type: 'button', onclick: () => State.copyCurrentUrl() },
+                        State.urlCopyState === 'copied'
+                            ? 'コピーしました'
+                            : State.urlCopyState === 'failed'
+                              ? 'コピーできません'
+                              : '現在のURLをコピー'
+                    ),
+                    m(
+                        'button.accept-toggle',
+                        {
+                            type: 'button',
+                            class: State.isAccepting ? 'is-active' : '',
+                            onclick: () => (State.isAccepting = !State.isAccepting),
+                        },
+                        State.isAccepting ? '自動取得ON' : '停止中'
+                    ),
+                ]),
             ]),
             m(MapView),
             State.isOutEffect
